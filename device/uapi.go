@@ -97,6 +97,10 @@ func (device *Device) IpcGetOperation(w io.Writer) error {
 			sendf("fwmark=%d", device.net.fwmark)
 		}
 
+		if reserved := device.ReservedField(); reserved != 0 {
+			sendf("reserved_field=0x%06x", reserved)
+		}
+
 		for _, peer := range device.peers.keyMap {
 			// Serialize peer state.
 			peer.handshake.mutex.RLock()
@@ -239,6 +243,17 @@ func (device *Device) handleDeviceLine(key, value string) error {
 		}
 		device.log.Verbosef("UAPI: Removing all peers")
 		device.RemoveAllPeers()
+
+	case "reserved_field":
+		reserved, err := strconv.ParseUint(value, 0, 32)
+		if err != nil {
+			return ipcErrorf(ipc.IpcErrorInvalid, "failed to parse reserved_field: %v", err)
+		}
+		if reserved > uint64(maxReservedValue) {
+			return ipcErrorf(ipc.IpcErrorInvalid, "reserved_field must be between 0 and 0x%06x", maxReservedValue)
+		}
+		device.log.Verbosef("UAPI: Updating reserved field")
+		device.SetReservedField(uint32(reserved))
 
 	default:
 		return ipcErrorf(ipc.IpcErrorInvalid, "invalid UAPI device key: %v", key)

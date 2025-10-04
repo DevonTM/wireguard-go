@@ -134,7 +134,8 @@ func (device *Device) RoutineReceiveIncoming(maxBatchSize int, recv conn.Receive
 			// check size of packet
 
 			packet := bufsArrs[i][:size]
-			msgType := binary.LittleEndian.Uint32(packet[:4])
+			rawType := binary.LittleEndian.Uint32(packet[:4])
+			msgType := baseMessageType(rawType)
 
 			switch msgType {
 
@@ -203,7 +204,7 @@ func (device *Device) RoutineReceiveIncoming(maxBatchSize int, recv conn.Receive
 				}
 
 			default:
-				device.log.Verbosef("Received message with unknown type")
+				device.log.Verbosef("Received message with unknown type %d", rawType)
 				continue
 			}
 
@@ -279,7 +280,7 @@ func (device *Device) RoutineHandshake(id int) {
 
 		// handle cookie fields and ratelimiting
 
-		switch elem.msgType {
+		switch baseMessageType(elem.msgType) {
 
 		case MessageCookieReplyType:
 
@@ -345,7 +346,7 @@ func (device *Device) RoutineHandshake(id int) {
 
 		// handle handshake initiation/response content
 
-		switch elem.msgType {
+		switch baseMessageType(elem.msgType) {
 		case MessageInitiationType:
 
 			// unmarshal

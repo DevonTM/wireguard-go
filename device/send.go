@@ -183,6 +183,7 @@ func (device *Device) SendHandshakeCookie(initiatingElem *QueueHandshakeElement)
 		device.log.Errorf("Failed to create cookie reply: %v", err)
 		return err
 	}
+	reply.Type = device.composeMessageType(MessageCookieReplyType)
 
 	packet := make([]byte, MessageCookieReplySize)
 	_ = reply.marshal(packet)
@@ -452,7 +453,7 @@ func (device *Device) RoutineEncryption(id int) {
 			fieldReceiver := header[4:8]
 			fieldNonce := header[8:16]
 
-			binary.LittleEndian.PutUint32(fieldType, MessageTransportType)
+			binary.LittleEndian.PutUint32(fieldType, device.composeMessageType(MessageTransportType))
 			binary.LittleEndian.PutUint32(fieldReceiver, elem.keypair.remoteIndex)
 			binary.LittleEndian.PutUint64(fieldNonce, elem.nonce)
 

@@ -32,6 +32,55 @@ func TestCurveWrappers(t *testing.T) {
 	}
 }
 
+func TestReservedFieldHandshake(t *testing.T) {
+	dev1 := randDevice(t)
+	dev2 := randDevice(t)
+
+	defer dev1.Close()
+	defer dev2.Close()
+
+	const reserved1 = 0x112233
+	const reserved2 = 0x445566
+
+	dev1.SetReservedField(reserved1)
+	dev2.SetReservedField(reserved2)
+
+	peer1, err := dev2.NewPeer(dev1.staticIdentity.privateKey.publicKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	peer2, err := dev1.NewPeer(dev2.staticIdentity.privateKey.publicKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	peer1.Start()
+	peer2.Start()
+
+	msg1, err := dev1.CreateMessageInitiation(peer2)
+	assertNil(t, err)
+
+	expectedType1 := uint32(MessageInitiationType) | uint32(reserved1)<<messageTypeBits
+	if msg1.Type != expectedType1 {
+		t.Fatalf("unexpected initiation type: got 0x%08x want 0x%08x", msg1.Type, expectedType1)
+	}
+
+	if peer := dev2.ConsumeMessageInitiation(msg1); peer == nil {
+		t.Fatal("handshake initiation rejected")
+	}
+
+	msg2, err := dev2.CreateMessageResponse(peer1)
+	assertNil(t, err)
+
+	expectedType2 := uint32(MessageResponseType) | uint32(reserved2)<<messageTypeBits
+	if msg2.Type != expectedType2 {
+		t.Fatalf("unexpected response type: got 0x%08x want 0x%08x", msg2.Type, expectedType2)
+	}
+
+	if peer := dev1.ConsumeMessageResponse(msg2); peer == nil {
+		t.Fatal("handshake response rejected")
+	}
+}
+
 func randDevice(t *testing.T) *Device {
 	sk, err := newPrivateKey()
 	if err != nil {

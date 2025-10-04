@@ -22,6 +22,10 @@ When an interface is running, you may use [`wg(8)`](https://git.zx2c4.com/wiregu
 
 To run with more logging you may set the environment variable `LOG_LEVEL=debug`.
 
+### Reserved field customization
+
+WireGuard reserves the upper 24 bits of the handshake and transport type field. By default they are zeroed, but `wireguard-go` lets you set them explicitly through the standard configuration interface. Add a `reserved_field` entry (decimal or prefixed hex such as `0x112233`) in your device configuration; the same value will be applied to all outbound handshake, cookie, and transport packets and will be reported via `wg show`.
+
 ## Platforms
 
 ### Linux

@@ -63,9 +63,10 @@ type Device struct {
 		limiter        ratelimiter.Ratelimiter
 	}
 
-	allowedips    AllowedIPs
-	indexTable    IndexTable
-	cookieChecker CookieChecker
+	allowedips        AllowedIPs
+	indexTable        IndexTable
+	cookieChecker     CookieChecker
+	handshakeReserved atomic.Uint32
 
 	pool struct {
 		inboundElementsContainer  *WaitPool
@@ -224,6 +225,19 @@ func (device *Device) IsUnderLoad() bool {
 	}
 	// check if recently under load
 	return device.rate.underLoadUntil.Load() > now.UnixNano()
+}
+
+func (device *Device) SetReservedField(value uint32) {
+	value &= maxReservedValue
+	device.handshakeReserved.Store(value)
+}
+
+func (device *Device) ReservedField() uint32 {
+	return device.handshakeReserved.Load()
+}
+
+func (device *Device) composeMessageType(base uint32) uint32 {
+	return (base & messageTypeMask) | device.handshakeReserved.Load()<<messageTypeBits
 }
 
 func (device *Device) SetPrivateKey(sk NoisePrivateKey) error {

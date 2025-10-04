@@ -61,6 +61,17 @@ const (
 )
 
 const (
+	messageTypeBits            = 8
+	messageTypeMask     uint32 = (1 << messageTypeBits) - 1
+	messageReservedMask uint32 = ^messageTypeMask
+	maxReservedValue    uint32 = messageReservedMask >> messageTypeBits
+)
+
+func baseMessageType(value uint32) uint32 {
+	return value & messageTypeMask
+}
+
+const (
 	MessageInitiationSize      = 148                                           // size of handshake initiation message
 	MessageResponseSize        = 92                                            // size of response message
 	MessageCookieReplySize     = 64                                            // size of cookie reply message
@@ -287,7 +298,7 @@ func (device *Device) CreateMessageInitiation(peer *Peer) (*MessageInitiation, e
 	handshake.mixHash(handshake.remoteStatic[:])
 
 	msg := MessageInitiation{
-		Type:      MessageInitiationType,
+		Type:      device.composeMessageType(MessageInitiationType),
 		Ephemeral: handshake.localEphemeral.publicKey(),
 	}
 
@@ -343,7 +354,7 @@ func (device *Device) ConsumeMessageInitiation(msg *MessageInitiation) *Peer {
 		chainKey [blake2s.Size]byte
 	)
 
-	if msg.Type != MessageInitiationType {
+	if baseMessageType(msg.Type) != MessageInitiationType {
 		return nil
 	}
 
@@ -460,7 +471,7 @@ func (device *Device) CreateMessageResponse(peer *Peer) (*MessageResponse, error
 	}
 
 	var msg MessageResponse
-	msg.Type = MessageResponseType
+	msg.Type = device.composeMessageType(MessageResponseType)
 	msg.Sender = handshake.localIndex
 	msg.Receiver = handshake.remoteIndex
 
@@ -510,7 +521,7 @@ func (device *Device) CreateMessageResponse(peer *Peer) (*MessageResponse, error
 }
 
 func (device *Device) ConsumeMessageResponse(msg *MessageResponse) *Peer {
-	if msg.Type != MessageResponseType {
+	if baseMessageType(msg.Type) != MessageResponseType {
 		return nil
 	}
 
